@@ -26,39 +26,50 @@
 #     print("Số bước:", len(path))
 #     print("Chi phí:", result.cost)
 
-from board import Board
-from block import Block
+# from board import Board
+# from block import Block
 
-board = Board("maps/level1.json")
-block = Block(board.start[0], board.start[1])
+# board = Board("maps/level1.json")
+# block = Block(board.start[0], board.start[1])
 
-board.print_board()
+# board.print_board()
 
-while not board.is_win(block):
+# while not board.is_win(block):
 
-    print("\n----------------")
-    print(block)
+#     print("\n----------------")
+#     print(block)
 
-    move = input("Move (W/A/S/D): ").upper()
+#     move = input("Move (W/A/S/D): ").upper()
 
-    if move == "W":
-        direction = "UP"
-    elif move == "S":
-        direction = "DOWN"
-    elif move == "A":
-        direction = "LEFT"
-    elif move == "D":
-        direction = "RIGHT"
-    else:
-        print("Phím không hợp lệ!")
-        continue
+#     if move == "W":
+#         direction = "UP"
+#     elif move == "S":
+#         direction = "DOWN"
+#     elif move == "A":
+#         direction = "LEFT"
+#     elif move == "D":
+#         direction = "RIGHT"
+#     else:
+#         print("Phím không hợp lệ!")
+#         continue
 
-    new_block = block.copy()
-    new_block.move(direction)
+#     new_block = block.copy()
+#     new_block.move(direction)
 
-    if board.is_valid_block(new_block):
-        block = new_block
-    else:
-        print("Không thể đi hướng đó!")
+#     if board.is_valid_block(new_block):
+#         block = new_block
+#     else:
+#         print("Không thể đi hướng đó!")
 
-print("\nChúc mừng, bạn đã thắng!")
+# print("\nChúc mừng, bạn đã thắng!")
+
+
+from ursina import Ursina
+from game.game import Game
+
+
+app = Ursina()
+
+game = Game("maps/level1.json")
+
+app.run()
