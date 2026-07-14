@@ -1,50 +1,48 @@
+import time
 from collections import deque
+
 from state import State
-from .successor import get_successors
+from algorithms.successor import get_successors
+from algorithms.search_result import SearchResult
 
 
 def bfs(board, start_block):
-    """
-    Tìm đường đi bằng Breadth-First Search (BFS)
+    search_start = time.perf_counter()
 
-    Parameters
-    ----------
-    board : Board
-    start_block : Block
-
-    Returns
-    -------
-    State hoặc None
-    """
-
-    # Tạo trạng thái ban đầu
     start_state = State(start_block)
 
-    # Queue của BFS
-    queue = deque()
-    queue.append(start_state)
+    queue = deque([start_state])
+    visited = {start_state}
 
-    # Tập trạng thái đã duyệt
-    visited = set()
-    visited.add(start_state)
+    expanded_nodes = 0
 
     while queue:
-
-        # Lấy state đầu tiên
         current_state = queue.popleft()
 
-        # Kiểm tra đã tới Goal chưa
+        expanded_nodes += 1
+
         if board.is_win(current_state.block):
-            return current_state
+            search_time = time.perf_counter() - search_start
 
-        # Sinh các trạng thái mới
-        successors = get_successors(current_state, board)
+            path = current_state.get_path()
 
-        for next_state in successors:
+            return SearchResult(
+                path=path,
+                expanded_nodes=expanded_nodes,
+                search_time=search_time,
+                found=True
+            )
 
+        for next_state in get_successors(current_state, board):
             if next_state not in visited:
-
                 visited.add(next_state)
                 queue.append(next_state)
 
-    return None
+    search_time = time.perf_counter() - search_start
+
+    return SearchResult(
+        path=[],
+        expanded_nodes=expanded_nodes,
+        search_time=search_time,
+        found=False
+    )
