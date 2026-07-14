@@ -1,27 +1,20 @@
+from algorithms.astar import astar
 from algorithms.bfs import bfs
-
-# Sau này import thêm:
-# from algorithms.ids import ids
-# from algorithms.ucs import ucs
-# from algorithms.astar import astar
+from algorithms.ids import ids
+from algorithms.ucs import ucs
 
 
-def solve(board, start_block, algorithm_name):
-    algorithm_name = algorithm_name.upper()
-
-    if algorithm_name == "BFS":
-        return bfs(board, start_block)
-
-    # Sau này mở dần:
-    # if algorithm_name == "DFS":
-    #     return dfs(board, start_block)
-
-    # if algorithm_name == "UCS":
-    #     return ucs(board, start_block)
-
-    # if algorithm_name == "ASTAR":
-    #     return astar(board, start_block)
-
-    raise ValueError(
-        f"Thuật toán không hợp lệ: {algorithm_name}"
-    )
+def solve(board, start_block, algorithm_name, start_bridge_states=None):
+    normalized_name = algorithm_name.upper().replace("*", "STAR")
+    algorithms = {
+        "BFS": bfs,
+        "DFS": ids,  # The assignment explicitly permits IDS instead of DFS.
+        "IDS": ids,
+        "UCS": ucs,
+        "ASTAR": astar,
+    }
+    try:
+        algorithm = algorithms[normalized_name]
+    except KeyError as error:
+        raise ValueError(f"Thuật toán không hợp lệ: {algorithm_name}") from error
+    return algorithm(board, start_block, start_bridge_states)

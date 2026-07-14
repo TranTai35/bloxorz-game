@@ -464,8 +464,10 @@ Dùng Uniform Cost Search.
 
 - Dùng priority queue.
 - Mở rộng node có tổng chi phí nhỏ nhất trước.
-- Khi mọi bước đi có cost bằng 1, kết quả có thể giống BFS.
-- Vẫn cần triển khai riêng để hỗ trợ tile hoặc hành động có chi phí khác nhau trong tương lai.
+- Một lần roll có cost 1; đi qua fragile tile cộng 1; kích hoạt switch cộng
+  0.25; đổi cube đang điều khiển bằng Space có cost 0.5.
+- Cost không đồng đều giúp UCS có thể chọn đường an toàn hơn BFS dù số bước
+  bằng nhau.
 
 ---
 
@@ -484,9 +486,10 @@ Trong đó:
 - `g(n)`: chi phí từ start đến node hiện tại.
 - `h(n)`: heuristic ước lượng khoảng cách đến goal.
 
-Heuristic cần phù hợp với trạng thái block, không chỉ dựa vào một ô đơn lẻ.
-
-Một heuristic đơn giản có thể dựa trên khoảng cách Manhattan từ tâm block đến goal.
+Heuristic hiện tại lấy khoảng cách Manhattan nhỏ nhất từ các ô block đang chiếm
+đến goal, chia 2 và làm tròn lên. Nếu block chưa đứng thì lower bound ít nhất là
+1. Đây là heuristic admissible vì một lần roll chỉ có thể rút ngắn khoảng cách
+tọa độ tối đa hai ô, còn các penalty của UCS đều không âm.
 
 ---
 
@@ -1022,9 +1025,42 @@ Ký hiệu hiện tại:
 ```text
 # = khoảng trống
 . = ô sàn
+F = ô dễ vỡ
+S = soft switch
+H = heavy switch
+X = split switch
 ```
 
-Có thể mở rộng thêm các ký hiệu tile đặc biệt trong tương lai.
+Bridge và liên kết switch được khai báo tường minh để trạng thái đóng/mở có thể
+được lưu trong state của solver. Ví dụ:
+
+```json
+{
+  "grid": ["#########", "#..S#...#", "#########"],
+  "start": [1, 1],
+  "goal": [1, 7],
+  "bridges": {
+    "bridge_1": {
+      "cells": [[1, 4]],
+      "initial_open": false
+    }
+  },
+  "switches": [
+    {
+      "id": "switch_1",
+      "position": [1, 3],
+      "type": "soft",
+      "bridges": ["bridge_1"],
+      "action": "toggle"
+    }
+  ]
+}
+```
+
+`type` nhận `soft`, `heavy` hoặc `split`. `action` nhận `toggle`, `open`
+hoặc `close`. Với permanent switch có thể dùng `"behavior": "permanent"`
+và `"state": "open"`. Split switch khai báo thêm hai tọa độ
+`"targets": [[r1, c1], [r2, c2]]`.
 
 ---
 
@@ -1169,19 +1205,13 @@ Phiên bản Panda3D/Ursina hiện tại có thể không hỗ trợ `.webp` là
 
 # 14. Công việc còn có thể phát triển
 
-- Hoàn thiện IDS.
-- Hoàn thiện UCS.
-- Hoàn thiện A* và heuristic.
-- Thêm tile dễ vỡ.
-- Thêm switch và bridge.
-- Thêm teleport hoặc split block nếu bài yêu cầu.
 - Thêm màn hình hướng dẫn.
 - Thêm chọn tốc độ animation trong mode Solve.
-- Thêm thống kê frontier size, generated nodes và memory usage.
 - Thêm khóa level hoặc lưu tiến trình.
 - Thêm ảnh preview cho từng level.
 - Thêm nút pause khi solver đang chạy.
 - Thêm bảng so sánh kết quả nhiều thuật toán trên cùng level.
+- Hoàn thiện báo cáo PDF, biểu đồ thí nghiệm và video demo của nhóm.
 
 ---
 
@@ -1255,8 +1285,28 @@ Các phần đã có hoặc đang hoạt động:
 - Khóa điều khiển tay trong mode Solve.
 - Bộ đếm bước và thời gian.
 - Cấu trúc để phát lại đường đi của solver.
+- BFS, IDS, UCS với cost không đồng đều và A* với heuristic admissible.
+- Thống kê search time, peak memory, expanded/generated nodes, peak frontier,
+  solution length và solution cost.
+- Fragile tile, bridge, soft switch, heavy switch và permanent/toggle behavior.
+- Split switch, điều khiển hai cube bằng Space và tự ghép lại khi kề nhau.
+- State của solver bao gồm cả cấu hình bridge và cube đang được điều khiển.
+- Bảy level mẫu, gồm level cơ bản, từng cơ chế nâng cao và một level kết hợp.
+- Bộ kiểm thử logic cho chuyển hướng, biên bản đồ, tile nâng cao và bốn solver.
 
-Các thành viên tiếp theo nên kiểm tra code thực tế để xác nhận thuật toán nào đã hoàn thiện trước khi tiếp tục.
+Chạy kiểm thử:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Xuất dữ liệu thí nghiệm (mặc định đo mỗi cấu hình 5 lần):
+
+```bash
+python run_experiments.py
+```
+
+Kết quả được ghi vào `output/experiments.csv` để tạo bảng và biểu đồ cho báo cáo.
 
 ---
 

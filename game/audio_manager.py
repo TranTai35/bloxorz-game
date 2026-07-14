@@ -2,15 +2,17 @@ from ursina import Audio
 
 
 class AudioManager:
-    def __init__(self):
+    def __init__(self, parent=None):
         self.move_sound = Audio(
             "assets/sounds/block_land.wav",
+            parent=parent,
             autoplay=False,
             volume=0.7
         )
 
         self.background_music = Audio(
             "assets/sounds/background_music.wav",
+            parent=parent,
             autoplay=True,
             loop=True,
             volume=0.3

@@ -1,0 +1,34 @@
+{
+    "grid": [
+        "######",
+        "#.#..#",
+        "###.##",
+        "###S.#",
+        "###.##",
+        "#...X#",
+        "######"
+    ],
+    "start": [5, 1],
+    "goal": [4, 3],
+    "bridges": {
+        "split_route": {
+            "cells": [[1, 2]],
+            "initial_open": false
+        }
+    },
+    "switches": [
+        {
+            "id": "route_switch",
+            "position": [3, 3],
+            "type": "soft",
+            "bridges": ["split_route"],
+            "action": "toggle"
+        },
+        {
+            "id": "split_entry",
+            "position": [5, 4],
+            "type": "split",
+            "targets": [[1, 1], [3, 4]]
+        }
+    ]
+}

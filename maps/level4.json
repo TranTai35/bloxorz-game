@@ -1,0 +1,24 @@
+{
+    "grid": [
+        "#########",
+        "#..S#...#",
+        "#########"
+    ],
+    "start": [1, 1],
+    "goal": [1, 7],
+    "bridges": {
+        "soft_bridge": {
+            "cells": [[1, 4]],
+            "initial_open": false
+        }
+    },
+    "switches": [
+        {
+            "id": "soft_toggle",
+            "position": [1, 3],
+            "type": "soft",
+            "bridges": ["soft_bridge"],
+            "action": "toggle"
+        }
+    ]
+}

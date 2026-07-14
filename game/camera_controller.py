@@ -6,7 +6,7 @@ def setup_camera(board):
 
     for row in range(board.rows):
         for col in range(board.cols):
-            if not board.is_void(row, col):
+            if not board.is_void(row, col) or board.is_bridge(row, col):
                 x = col
                 z = -row
                 floor_positions.append((x, z))

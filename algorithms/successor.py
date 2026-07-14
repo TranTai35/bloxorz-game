@@ -2,32 +2,19 @@ from state import State
 
 
 def get_successors(state, board):
-    """
-    Sinh tất cả trạng thái kế tiếp hợp lệ từ state hiện tại.
-    """
-
+    """Generate every valid successor using the same rules as manual play."""
     successors = []
-
-    directions = ["UP", "DOWN", "LEFT", "RIGHT"]
-
-    for direction in directions:
-
-        # Copy block hiện tại
-        new_block = state.block.copy()
-
-        # Di chuyển
-        new_block.move(direction)
-
-        # Kiểm tra hợp lệ
-        if board.is_valid_block(new_block):
-
-            new_state = State(
-                block=new_block,
+    for action in board.available_actions(state.block):
+        result = board.transition(state.block, state.bridge_states, action)
+        if not result.valid:
+            continue
+        successors.append(
+            State(
+                block=result.block,
+                bridge_states=result.bridge_states,
                 parent=state,
-                action=direction,
-                cost=state.cost + 1
+                action=action,
+                cost=state.cost + board.get_action_cost(result, action),
             )
-
-            successors.append(new_state)
-
+        )
     return successors

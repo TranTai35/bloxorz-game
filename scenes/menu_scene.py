@@ -11,7 +11,7 @@ class MenuScene(Entity):
         self.background = Entity(
             parent=self,
             model="quad",
-            texture="assets/sprites/background.png",
+            texture="assets/sprites/background.jpg",
             scale=50,
             double_sided=True
         )

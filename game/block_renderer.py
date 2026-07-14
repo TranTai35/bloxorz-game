@@ -1,11 +1,5 @@
-from ursina import (
-    Entity,
-    invoke,
-    destroy,
-    Vec3,
-    curve,
-    load_texture
-)
+from ursina import Entity, Vec3, color, curve, destroy, invoke, load_texture
+
 from block import Orientation
 
 
@@ -13,394 +7,225 @@ class BlockRenderer:
     def __init__(self, block_logic, parent):
         self.block_logic = block_logic
         self.parent = parent
-
-        block_texture = load_texture(
-            "assets/texture/block.jpg"
-        )
-
-        print("Block texture:", block_texture)
+        self.block_texture = load_texture("assets/texture/block.jpg")
 
         self.entity = Entity(
             parent=self.parent,
             model="cube",
-            texture=block_texture
+            texture=self.block_texture,
         )
-
+        self.split_entities = [
+            Entity(
+                parent=self.parent,
+                model="cube",
+                texture=self.block_texture,
+                enabled=False,
+            )
+            for _ in range(2)
+        ]
         self.update_transform()
 
     def grid_to_world(self, row, col):
-        x = col
-        z = -row
-        return x, z
+        return col, -row
 
     def get_transform(self, block):
         if block.orientation == Orientation.STANDING:
             row, col = block.pos1
             x, z = self.grid_to_world(row, col)
-
-            position = Vec3(x, 1.1, z)
-            scale = Vec3(1, 2, 1)
-
-        elif block.orientation == Orientation.HORIZONTAL:
+            return Vec3(x, 1.1, z), Vec3(1, 2, 1)
+        if block.orientation == Orientation.HORIZONTAL:
             row1, col1 = block.pos1
-            row2, col2 = block.pos2
-
-            center_col = (col1 + col2) / 2
-            x, z = self.grid_to_world(row1, center_col)
-
-            position = Vec3(x, 0.6, z)
-            scale = Vec3(2, 1, 1)
-
-        elif block.orientation == Orientation.VERTICAL:
+            _, col2 = block.pos2
+            x, z = self.grid_to_world(row1, (col1 + col2) / 2)
+            return Vec3(x, 0.6, z), Vec3(2, 1, 1)
+        if block.orientation == Orientation.VERTICAL:
             row1, col1 = block.pos1
-            row2, col2 = block.pos2
-
-            center_row = (row1 + row2) / 2
-            x, z = self.grid_to_world(center_row, col1)
-
-            position = Vec3(x, 0.6, z)
-            scale = Vec3(1, 1, 2)
-
-        else:
-            raise ValueError("Orientation không hợp lệ")
-
-        return position, scale
+            row2, _ = block.pos2
+            x, z = self.grid_to_world((row1 + row2) / 2, col1)
+            return Vec3(x, 0.6, z), Vec3(1, 1, 2)
+        raise ValueError("SPLIT sử dụng hai entity riêng")
 
     def update_transform(self):
-        position, scale = self.get_transform(self.block_logic)
+        if self.block_logic.orientation == Orientation.SPLIT:
+            self.entity.enabled = False
+            for index, (row, col) in enumerate(self.block_logic.get_cells()):
+                x, z = self.grid_to_world(row, col)
+                cube = self.split_entities[index]
+                cube.enabled = True
+                cube.position = Vec3(x, 0.6, z)
+                cube.scale = Vec3(1, 1, 1)
+                cube.rotation = (0, 0, 0)
+                cube.color = color.azure if index == self.block_logic.active_index else color.white
+            return
 
+        self.entity.enabled = True
+        for cube in self.split_entities:
+            cube.enabled = False
+        position, scale = self.get_transform(self.block_logic)
         self.entity.position = position
         self.entity.scale = scale
         self.entity.rotation = (0, 0, 0)
+        self.entity.color = color.white
 
     def get_pivot_data(self, block, direction):
         position, scale = self.get_transform(block)
-
         half_x = scale.x / 2
         half_y = scale.y / 2
         half_z = scale.z / 2
 
         if direction == "UP":
-            pivot_position = Vec3(
-                position.x,
-                position.y - half_y,
-                position.z + half_z
-            )
-            axis = "x"
-            angle = 90
+            return Vec3(position.x, position.y - half_y, position.z + half_z), "x", 90
+        if direction == "DOWN":
+            return Vec3(position.x, position.y - half_y, position.z - half_z), "x", -90
+        if direction == "LEFT":
+            return Vec3(position.x - half_x, position.y - half_y, position.z), "z", -90
+        if direction == "RIGHT":
+            return Vec3(position.x + half_x, position.y - half_y, position.z), "z", 90
+        raise ValueError(f"Hướng không hợp lệ: {direction}")
 
-        elif direction == "DOWN":
-            pivot_position = Vec3(
-                position.x,
-                position.y - half_y,
-                position.z - half_z
-            )
-            axis = "x"
-            angle = -90
+    def animate_move(self, old_block, new_block, direction, on_complete):
+        if old_block.orientation == Orientation.SPLIT:
+            self._animate_split_move(old_block, new_block, direction, on_complete)
+            return
 
-        elif direction == "LEFT":
-            pivot_position = Vec3(
-                position.x - half_x,
-                position.y - half_y,
-                position.z
-            )
-            axis = "z"
-            angle = -90
-
-        elif direction == "RIGHT":
-            pivot_position = Vec3(
-                position.x + half_x,
-                position.y - half_y,
-                position.z
-            )
-            axis = "z"
-            angle = 90
-
-        else:
-            raise ValueError(f"Hướng không hợp lệ: {direction}")
-
-        return pivot_position, axis, angle
-
-    def animate_move(
-        self,
-        old_block,
-        new_block,
-        direction,
-        on_complete
-    ):
         duration = 0.25
-
-        pivot_position, axis, angle = self.get_pivot_data(
-            old_block,
-            direction
-        )
-
-        pivot = Entity(
-        parent=self.parent,
-        position=pivot_position
-    )
-
-        # Đổi parent nhưng giữ nguyên vị trí thế giới
+        pivot_position, axis, angle = self.get_pivot_data(old_block, direction)
+        pivot = Entity(parent=self.parent, position=pivot_position)
         self.entity.world_parent = pivot
 
         if axis == "x":
-            pivot.animate_rotation_x(
-                angle,
-                duration=duration,
-                curve=curve.linear
-            )
-
-        elif axis == "z":
-            pivot.animate_rotation_z(
-                angle,
-                duration=duration,
-                curve=curve.linear
-            )
+            pivot.animate_rotation_x(angle, duration=duration, curve=curve.linear)
+        else:
+            pivot.animate_rotation_z(angle, duration=duration, curve=curve.linear)
 
         invoke(
-            self.finish_animation,
+            self._finish_roll_animation,
             pivot,
             new_block,
             on_complete,
-            delay=duration
+            delay=duration,
         )
 
-    def finish_animation(
-        self,
-        pivot,
-        new_block,
-        on_complete
-    ):
-        # Đưa block trở về scene và giữ world transform
+    def _finish_roll_animation(self, pivot, new_block, on_complete):
         self.entity.world_parent = self.parent
-
         destroy(pivot)
-
-        # Gán trạng thái logic mới
         self.block_logic = new_block
-
-        # Ép về transform chính xác để tránh sai số animation
         self.update_transform()
-
         on_complete()
 
-    #animation chơi rơi ở rìa khi nằm
+    def _animate_split_move(self, old_block, new_block, direction, on_complete):
+        duration = 0.12 if direction == "SWITCH" else 0.2
+        if direction != "SWITCH":
+            row, col = old_block.get_active_cell()
+            deltas = {
+                "UP": (-1, 0),
+                "DOWN": (1, 0),
+                "LEFT": (0, -1),
+                "RIGHT": (0, 1),
+            }
+            row_delta, col_delta = deltas[direction]
+            x, z = self.grid_to_world(row + row_delta, col + col_delta)
+            moving_cube = self.split_entities[old_block.active_index]
+            moving_cube.animate_position(
+                Vec3(x, 0.6, z),
+                duration=duration,
+                curve=curve.linear,
+            )
+        invoke(self._finish_split_animation, new_block, on_complete, delay=duration)
+
+    def _finish_split_animation(self, new_block, on_complete):
+        self.block_logic = new_block
+        self.update_transform()
+        on_complete()
+
     def animate_fall(self, on_complete):
         duration = 0.7
-        fall_distance = 8
-
-        self.entity.animate_y(
-            self.entity.y - fall_distance,
-            duration=duration,
-            curve=curve.linear
+        targets = (
+            self.split_entities
+            if self.block_logic.orientation == Orientation.SPLIT
+            else [self.entity]
         )
+        for target in targets:
+            if not target.enabled:
+                continue
+            target.animate_y(target.y - 8, duration=duration, curve=curve.linear)
+            target.animate_rotation_x(target.rotation_x + 45, duration=duration, curve=curve.linear)
+            target.animate_rotation_z(target.rotation_z + 25, duration=duration, curve=curve.linear)
+        invoke(on_complete, delay=duration)
 
-        # Xoay nhẹ trong lúc rơi để nhìn tự nhiên hơn
-        self.entity.animate_rotation_x(
-            self.entity.rotation_x + 45,
-            duration=duration,
-            curve=curve.linear
-        )
+    def animate_split_fall(self, supported_cells, on_complete):
+        duration = 0.7
+        supported = set(supported_cells)
+        falling_indexes = [
+            index
+            for index, cell in enumerate(self.block_logic.get_cells())
+            if cell not in supported
+        ]
+        if not falling_indexes:
+            falling_indexes = [0, 1]
+        for index in falling_indexes:
+            cube = self.split_entities[index]
+            cube.animate_y(cube.y - 8, duration=duration, curve=curve.in_quad)
+            cube.animate_rotation_x(cube.rotation_x + 45, duration=duration, curve=curve.linear)
+        invoke(on_complete, delay=duration)
 
-        self.entity.animate_rotation_z(
-            self.entity.rotation_z + 25,
-            duration=duration,
-            curve=curve.linear
-        )
-
-        invoke(
-            on_complete,
-            delay=duration
-        )
-
-    #animation chơi rơi khi ở rìa khi đứng
-    def animate_tip_and_fall(self,invalid_block,direction,on_complete):
-        tip_duration = 0.25
-        fall_duration = 0.7
-
+    def animate_tip_and_fall(self, invalid_block, direction, on_complete):
         position = self.entity.position
         scale = self.entity.scale
-
-        half_x = scale.x / 2
-        half_y = scale.y / 2
-        half_z = scale.z / 2
-
+        half_x, half_y, half_z = scale.x / 2, scale.y / 2, scale.z / 2
         if direction == "UP":
-            pivot_position = Vec3(
-                position.x,
-                position.y - half_y,
-                position.z - half_z
-            )
-            axis = "x"
-            angle = 90
-
+            pivot_position, axis, angle = Vec3(position.x, position.y - half_y, position.z - half_z), "x", 90
         elif direction == "DOWN":
-            pivot_position = Vec3(
-                position.x,
-                position.y - half_y,
-                position.z + half_z
-            )
-            axis = "x"
-            angle = -90
-
+            pivot_position, axis, angle = Vec3(position.x, position.y - half_y, position.z + half_z), "x", -90
         elif direction == "LEFT":
-            pivot_position = Vec3(
-                position.x + half_x,
-                position.y - half_y,
-                position.z
-            )
-            axis = "z"
-            angle = -90
-
+            pivot_position, axis, angle = Vec3(position.x + half_x, position.y - half_y, position.z), "z", -90
         elif direction == "RIGHT":
-            pivot_position = Vec3(
-                position.x - half_x,
-                position.y - half_y,
-                position.z
-            )
-            axis = "z"
-            angle = 90
-
+            pivot_position, axis, angle = Vec3(position.x - half_x, position.y - half_y, position.z), "z", 90
         else:
             raise ValueError(f"Hướng không hợp lệ: {direction}")
+        self._tip_from_pivot(pivot_position, axis, angle, on_complete)
 
-        pivot = Entity(
-            parent=scene,
-            position=pivot_position
-        )
-
-        self.entity.world_parent = self.parent
-
-        if axis == "x":
-            pivot.animate_rotation_x(
-                angle,
-                duration=tip_duration,
-                curve=curve.linear
-            )
-        else:
-            pivot.animate_rotation_z(
-                angle,
-                duration=tip_duration,
-                curve=curve.linear
-            )
-
-        invoke(
-            self.finish_tip,
-            pivot,
-            fall_duration,
-            on_complete,
-            delay=tip_duration
-        )
-
-    def finish_tip(self, pivot, fall_duration, on_complete):
-        self.entity.world_parent = self.parent
-        destroy(pivot)
-
-        self.entity.animate_y(
-            self.entity.y - 8,
-            duration=fall_duration,
-            curve=curve.in_quad
-        )
-
-        invoke(
-            on_complete,
-            delay=fall_duration
-        )
-
-    #animation cho rơi khi ở cận rìa
-    def animate_edge_tip_and_fall(self,supported_cell,direction,on_complete):
-        tip_duration = 0.3
-        fall_duration = 0.7
-
+    def animate_edge_tip_and_fall(self, supported_cell, direction, on_complete):
         row, col = supported_cell
         tile_x, tile_z = self.grid_to_world(row, col)
-
-        # Mặt trên floor đang ở y = 0.1
         floor_top_y = 0.1
-
         if direction == "UP":
-            # UP: z tăng do grid_to_world dùng z = -row
-            pivot_position = Vec3(
-                tile_x,
-                floor_top_y,
-                tile_z + 0.5
-            )
-            axis = "x"
-            angle = 90
-
+            pivot_position, axis, angle = Vec3(tile_x, floor_top_y, tile_z + 0.5), "x", 90
         elif direction == "DOWN":
-            pivot_position = Vec3(
-                tile_x,
-                floor_top_y,
-                tile_z - 0.5
-            )
-            axis = "x"
-            angle = -90
-
+            pivot_position, axis, angle = Vec3(tile_x, floor_top_y, tile_z - 0.5), "x", -90
         elif direction == "LEFT":
-            pivot_position = Vec3(
-                tile_x - 0.5,
-                floor_top_y,
-                tile_z
-            )
-            axis = "z"
-            angle = -90
-
+            pivot_position, axis, angle = Vec3(tile_x - 0.5, floor_top_y, tile_z), "z", -90
         elif direction == "RIGHT":
-            pivot_position = Vec3(
-                tile_x + 0.5,
-                floor_top_y,
-                tile_z
-            )
-            axis = "z"
-            angle = 90
-
+            pivot_position, axis, angle = Vec3(tile_x + 0.5, floor_top_y, tile_z), "z", 90
         else:
             raise ValueError(f"Hướng không hợp lệ: {direction}")
+        self._tip_from_pivot(pivot_position, axis, angle, on_complete)
 
-        pivot = Entity(
-            parent=scene,
-            position=pivot_position
-        )
-
-        # Đặt block làm con pivot nhưng giữ nguyên world transform
-        self.entity.world_parent = self.parent
-
+    def _tip_from_pivot(self, pivot_position, axis, angle, on_complete):
+        tip_duration = 0.3
+        fall_duration = 0.7
+        # The pivot belongs to the level root and the block must actually be its child.
+        # This fixes the half-on/half-off-board crash and makes the edge rotation visible.
+        pivot = Entity(parent=self.parent, position=pivot_position)
+        self.entity.world_parent = pivot
         if axis == "x":
-            pivot.animate_rotation_x(
-                angle,
-                duration=tip_duration,
-                curve=curve.in_quad
-            )
-
+            pivot.animate_rotation_x(angle, duration=tip_duration, curve=curve.in_quad)
         else:
-            pivot.animate_rotation_z(
-                angle,
-                duration=tip_duration,
-                curve=curve.in_quad
-            )
-
+            pivot.animate_rotation_z(angle, duration=tip_duration, curve=curve.in_quad)
         invoke(
-            self.finish_edge_tip,
+            self._finish_tip,
             pivot,
             fall_duration,
             on_complete,
-            delay=tip_duration
+            delay=tip_duration,
         )
 
-    def finish_edge_tip(self, pivot,fall_duration,on_complete):
-        # Giữ transform hiện tại khi rời pivot
+    def _finish_tip(self, pivot, fall_duration, on_complete):
         self.entity.world_parent = self.parent
-
         destroy(pivot)
-
         self.entity.animate_y(
             self.entity.y - 8,
             duration=fall_duration,
-            curve=curve.in_quad
+            curve=curve.in_quad,
         )
-
-        invoke(
-            on_complete,
-            delay=fall_duration
-        )
+        invoke(on_complete, delay=fall_duration)

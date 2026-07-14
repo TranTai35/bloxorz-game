@@ -31,7 +31,7 @@ class AlgorithmSelectPanel(Entity):
 
         algorithms = [
             ("BFS", "BFS"),
-            ("DFS", "DFS"),
+            ("IDS", "IDS"),
             ("UCS", "UCS"),
             ("A*", "ASTAR")
         ]

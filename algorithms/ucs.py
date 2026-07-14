@@ -1,24 +1,28 @@
-from collections import deque
+import heapq
+from itertools import count
 
 from algorithms.metrics import SearchMetrics
 from algorithms.successor import get_successors
 from state import State
 
 
-def bfs(board, start_block, start_bridge_states=None):
+def ucs(board, start_block, start_bridge_states=None):
     metrics = SearchMetrics()
-    start_state = State(
+    root = State(
         start_block.copy(),
         board.normalize_bridge_states(start_bridge_states),
     )
-    frontier = deque([start_state])
-    visited = {start_state}
+    order = count()
+    frontier = [(0.0, next(order), root)]
+    best_cost = {root.key(): 0.0}
     expanded_nodes = 0
     generated_nodes = 1
     peak_frontier = 1
 
     while frontier:
-        current = frontier.popleft()
+        cost, _, current = heapq.heappop(frontier)
+        if cost > best_cost.get(current.key(), float("inf")):
+            continue
         expanded_nodes += 1
 
         if board.is_win(current.block):
@@ -32,10 +36,11 @@ def bfs(board, start_block, start_bridge_states=None):
         successors = get_successors(current, board)
         generated_nodes += len(successors)
         for successor in successors:
-            if successor in visited:
+            key = successor.key()
+            if successor.cost >= best_cost.get(key, float("inf")):
                 continue
-            visited.add(successor)
-            frontier.append(successor)
+            best_cost[key] = successor.cost
+            heapq.heappush(frontier, (successor.cost, next(order), successor))
         peak_frontier = max(peak_frontier, len(frontier))
 
     return metrics.result(

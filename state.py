@@ -1,63 +1,47 @@
-from block import Block
-
-
 class State:
-    def __init__(self, block, parent=None, action=None, cost=0):
-        """
-        block   : Trạng thái hiện tại của block.
-        parent  : State trước đó (dùng để truy vết lời giải).
-        action  : Hành động dẫn tới state này (UP, DOWN, LEFT, RIGHT).
-        cost    : Chi phí từ trạng thái đầu đến state này.
-        """
-
+    def __init__(
+        self,
+        block,
+        bridge_states=(),
+        parent=None,
+        action=None,
+        cost=0.0,
+    ):
         self.block = block
+        self.bridge_states = tuple(bridge_states)
         self.parent = parent
         self.action = action
-        self.cost = cost
+        self.cost = float(cost)
 
     def copy(self):
         return State(
             self.block.copy(),
+            self.bridge_states,
             self.parent,
             self.action,
-            self.cost
+            self.cost,
         )
 
     def get_path(self):
-        """
-        Trả về danh sách các bước đi từ Start đến Goal.
-        """
-
         path = []
-
         current = self
-
         while current.parent is not None:
             path.append(current.action)
             current = current.parent
-
         path.reverse()
-
         return path
 
+    def key(self):
+        return self.block.state_key(), self.bridge_states
+
     def __eq__(self, other):
-        return (
-            self.block.orientation == other.block.orientation
-            and self.block.pos1 == other.block.pos1
-            and self.block.pos2 == other.block.pos2
-        )
+        return isinstance(other, State) and self.key() == other.key()
 
     def __hash__(self):
-        return hash((
-            self.block.orientation,
-            self.block.pos1,
-            self.block.pos2
-        ))
+        return hash(self.key())
 
     def __str__(self):
         return (
-            f"{self.block.orientation.name} | "
-            f"{self.block.pos1} | "
-            f"{self.block.pos2} | "
-            f"Cost = {self.cost}"
+            f"{self.block} | Bridges={dict(self.bridge_states)} | "
+            f"Cost={self.cost:.2f}"
         )

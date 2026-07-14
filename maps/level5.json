@@ -1,0 +1,25 @@
+{
+    "grid": [
+        "#########",
+        "#...H#..#",
+        "#########"
+    ],
+    "start": [1, 1],
+    "goal": [1, 7],
+    "bridges": {
+        "heavy_bridge": {
+            "cells": [[1, 5]],
+            "initial_open": false
+        }
+    },
+    "switches": [
+        {
+            "id": "heavy_open",
+            "position": [1, 4],
+            "type": "heavy",
+            "bridges": ["heavy_bridge"],
+            "behavior": "permanent",
+            "state": "open"
+        }
+    ]
+}
