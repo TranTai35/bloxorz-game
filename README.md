@@ -1251,9 +1251,10 @@ Phiên bản Panda3D/Ursina hiện tại có thể không hỗ trợ `.webp` là
 # 14. Công việc còn có thể phát triển
 
 - Cân chỉnh heuristic và so sánh hiệu suất giữa BFS, IDS, UCS và A*.
-- Hoàn thiện animation cho bridge, switch và split block.
+- Hoàn thiện animation, asset và sound cho bridge, switch và split block.
 - Làm nổi bật cube đang được điều khiển khi block ở trạng thái split.
 - Thêm màn hình hướng dẫn.
+- Thêm sound khi thắng hoặc thua một màn chơi.
 - Thêm chọn tốc độ animation trong mode Solve.
 - Thêm thống kê frontier size, generated nodes và memory usage.
 - Thêm khóa level hoặc lưu tiến trình.
