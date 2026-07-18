@@ -34,7 +34,7 @@ _click_audio = None
 _hover_audio = None
 
 
-def _get_click_audio():
+def get_click_audio():
     global _click_audio
     if _click_audio is None:
         _click_audio = Audio(
@@ -46,7 +46,7 @@ def _get_click_audio():
     return _click_audio
 
 
-def _get_hover_audio():
+def get_hover_audio():
     global _hover_audio
     if _hover_audio is None:
         _hover_audio = Audio(
@@ -59,12 +59,12 @@ def _get_hover_audio():
 
 
 def play_click():
-    audio = _get_click_audio()
+    audio = get_click_audio()
     audio.stop()
     audio.play()
 
 
 def play_hover():
-    audio = _get_hover_audio()
+    audio = get_hover_audio()
     audio.stop()
     audio.play()

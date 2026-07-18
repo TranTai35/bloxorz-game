@@ -1,16 +1,30 @@
 from pathlib import Path
 import re
 
-from ursina import (
-    Entity,
-    Text,
-    Button,
-    camera,
-    color,
-    destroy
-)
+from ursina import Entity, Text, camera, color, destroy
 
 from scenes.algorithm_select_panel import AlgorithmSelectPanel
+from ui.menu_button import MenuTextButton
+from ui.theme import (
+    FONT_BOLD,
+    FONT_REGULAR,
+    WHITE,
+)
+from ui.layout import BACKGROUND_SCALE
+
+"""
+==========================================================
+LEVEL SELECT SCENE
+
+Dùng chung MenuTextButton với Main Menu (thay vì MenuButton
+dựa trên Button gốc của Ursina, từng dính bug chữ bị co biến
+mất do đụng vào text_entity nội bộ của Button). MenuTextButton
+đã chạy ổn ở Main Menu nên tái dùng ở đây để:
+  - Cùng 1 component cho toàn bộ nút trong game -> dễ bảo trì,
+    sửa 1 chỗ là toàn bộ nút đều được lợi.
+  - Đồng bộ giao diện (cùng font, cùng hiệu ứng hover/click).
+==========================================================
+"""
 
 
 def get_level_number(path):
@@ -32,6 +46,15 @@ class LevelSelectScene(Entity):
 
         self.selected_level_path = None
 
+        # Nền tối đồng bộ với Main Menu, thay vì để trống/đen trơn
+        self.background = Entity(
+            parent=self,
+            model="quad",
+            texture="assets/sprites/night.jpg",
+            scale=BACKGROUND_SCALE,
+            double_sided=True,
+        )
+
         self.ui_root = Entity(parent=camera.ui)
 
         title_text = (
@@ -43,17 +66,20 @@ class LevelSelectScene(Entity):
         self.title = Text(
             parent=self.ui_root,
             text=title_text,
+            font=FONT_BOLD,
             origin=(0, 0),
-            y=0.4,
-            scale=2
+            y=0.42,
+            scale=2,
+            color=WHITE,
         )
 
-        self.back_button = Button(
+        self.back_button = MenuTextButton(
+            text="BACK",
+            font=FONT_REGULAR,
             parent=self.ui_root,
-            text="Back",
-            position=(-0.78, 0.43),
-            scale=(0.16, 0.07),
-            on_click=self.on_back
+            position=(-0.85, 0.44),
+            text_scale=1,
+            on_click=self.on_back,
         )
 
         self.level_container = Entity(
@@ -80,6 +106,7 @@ class LevelSelectScene(Entity):
             Text(
                 parent=self.level_container,
                 text="Không tìm thấy level trong thư mục maps",
+                font=FONT_REGULAR,
                 origin=(0, 0),
                 y=0.1,
                 color=color.red
@@ -87,31 +114,39 @@ class LevelSelectScene(Entity):
             return
 
         columns = 5
-        button_width = 0.18
-        button_height = 0.1
 
-        spacing_x = 0.22
-        spacing_y = 0.14
+        # Khoảng cách giữa các ô lưới - phải LỚN HƠN hitbox_width bên
+        # dưới để 2 nút cạnh nhau không chồng vùng bắt click lên nhau.
+        spacing_x = 0.26
+        spacing_y = 0.18
+
+        text_scale = 1.1
+        hitbox_width = 0.2
 
         for index, level_path in enumerate(level_files):
             row = index // columns
             col = index % columns
 
             x = (col - (columns - 1) / 2) * spacing_x
-            y = 0.25 - row * spacing_y
+            y = 0.2 - row * spacing_y
 
             level_number = get_level_number(level_path)
 
-            button = Button(
+            button = MenuTextButton(
+                text=f"LV.{level_number}",
+                font=FONT_REGULAR,
                 parent=self.level_container,
-                text=f"Level {level_number}",
                 position=(x, y),
-                scale=(button_width, button_height)
-            )
-
-            button.on_click = (
-                lambda path=str(level_path):
-                self.select_level(path)
+                text_scale=text_scale,
+                # Căn giữa cho hợp với lưới nhiều cột, thay vì căn
+                # trái như danh sách menu dọc.
+                label_origin=(0, 0),
+                hitbox_origin=(0, 0),
+                hitbox_width=hitbox_width,
+                on_click=(
+                    lambda path=str(level_path):
+                    self.select_level(path)
+                ),
             )
 
     def select_level(self, level_path):

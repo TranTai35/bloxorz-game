@@ -91,6 +91,9 @@ class MenuTextButton(Entity):
         glow_rgb=None,
         glow_rings=None,
         parent=None,
+        hitbox_width=None,
+        hitbox_origin=(-0.5, 0),
+        label_origin=(-0.5, 0),
     ):
         # Entity cha này luôn giữ scale mặc định (1, 1, 1) - KHÔNG
         # setattr scale ở đây, để label/hitbox bên dưới không bị ảnh
@@ -104,6 +107,11 @@ class MenuTextButton(Entity):
         # Mũi tên chỉ hướng, ẩn (alpha 0) lúc bình thường, sáng lên
         # khi hover - dấu hiệu "đang chọn" rõ ràng, không phụ thuộc
         # vào việc glow có hiển thị đẹp hay không.
+        # Chỉ hợp lý khi căn trái (danh sách menu dọc) - với lưới
+        # nhiều cột căn giữa (Level Select), mũi tên bị tắt hẳn qua
+        # show_indicator=False ở nơi gọi thay vì cố hiển thị lệch.
+        self.show_indicator = label_origin == (-0.5, 0)
+
         self.indicator = Text(
             text=">",
             parent=self,
@@ -112,13 +120,14 @@ class MenuTextButton(Entity):
             position=(-0.09, 0, -0.02),
             scale=text_scale,
             color=MENU_INDICATOR_COLOR_IDLE,
+            enabled=self.show_indicator,
         )
 
         self.label = GlowText(
             text=text,
             font=font or FONT_REGULAR,
             parent=self,
-            origin=(-0.5, 0),
+            origin=label_origin,
             main_color=main_color or GLOW_TEXT_COLOR,
             glow_rgb=glow_rgb or GLOW_HALO_RGB,
             rings=glow_rings or MENU_ITEM_GLOW_RINGS,
@@ -126,20 +135,25 @@ class MenuTextButton(Entity):
             position=(0, 0, -0.01),
         )
 
-        # Bề rộng hitbox ước lượng theo số ký tự - đủ rộng để dễ bấm,
-        # không phụ thuộc vào scale thật sự của label (tránh đúng cái
-        # bug đã nói ở trên).
-        hitbox_width = max(
-            MENU_ITEM_HITBOX_MIN_WIDTH,
-            len(text) * MENU_ITEM_HITBOX_CHAR_WIDTH * text_scale,
-        )
+        # Bề rộng hitbox: nếu nơi gọi truyền hitbox_width riêng (vd
+        # lưới nhiều cột cần bề rộng cố định bằng ô lưới) thì dùng
+        # đúng giá trị đó; nếu không, ước lượng theo số ký tự - đủ
+        # rộng để dễ bấm, không phụ thuộc vào scale thật sự của label
+        # (tránh đúng bug MenuButton/Button gặp phải trước đó).
+        if hitbox_width is None:
+            hitbox_width = max(
+                MENU_ITEM_HITBOX_MIN_WIDTH,
+                len(text) * MENU_ITEM_HITBOX_CHAR_WIDTH * text_scale,
+            )
+
+        hitbox_x_offset = -0.02 if hitbox_origin == (-0.5, 0) else 0
 
         self._hitbox = _MenuHitbox(
             owner=self,
             parent=self,
-            origin=(-0.5, 0),
+            origin=hitbox_origin,
             scale=(hitbox_width, MENU_ITEM_HITBOX_HEIGHT * text_scale),
-            position=(-0.02, 0, 0.01),
+            position=(hitbox_x_offset, 0, 0.01),
         )
 
     # ==================================================

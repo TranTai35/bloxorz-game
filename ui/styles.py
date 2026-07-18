@@ -1,16 +1,13 @@
-from ursina import Button, color, curve
+from ursina import Button, color
+from ursina.models.procedural.quad import Quad
 
 from ui.theme import (
     BUTTON_WIDTH,
     BUTTON_HEIGHT,
     PRIMARY,
     WHITE,
-    HOVER_SCALE,
-    PRESS_SCALE,
-    HOVER_ANIM_DURATION,
-    PRESS_ANIM_DURATION,
 )
-from ui.ui_sound import play_click, play_hover
+from ui.ui_sound import get_click_audio, get_hover_audio
 
 """
 ==========================================================
@@ -20,8 +17,29 @@ Dùng cho các nút "nặng" hơn MenuTextButton: Back, Restart,
 Level Select grid, Algorithm panel,... nơi cần 1 khối nền rõ
 ràng thay vì chỉ chữ trần.
 
-Cũng có animation hover/press + tiếng click/hover giống
-MenuTextButton để đồng bộ cảm giác trên toàn bộ game.
+VIẾT LẠI HOÀN TOÀN sau khi đọc trực tiếp source code Button
+trong thư viện ursina (đã cài vào máy để đối chiếu). Bug thật
+đã tìm thấy ở bản trước:
+
+    self.text_entity.scale = 1.2
+
+Button tự tính "self.text_entity.world_scale = 20 * text_size"
+để chữ luôn hiện đúng cỡ bất kể nút to/nhỏ ra sao (world_scale
+tự bù trừ theo scale của cha). Dòng trên GHI ĐÈ trực tiếp lên
+local scale đã được tính sẵn đó bằng 1 con số không liên quan,
+khiến chữ bị co lại nhỏ tới mức gần như bằng 0 - biến mất hoàn
+toàn vào nền, dù nền vẫn hiện (chỉ là không thấy chữ).
+
+CÁCH SỬA ĐÚNG: không tự ý set thuộc tính con (text_entity) sau
+khi Button đã dựng xong. Toàn bộ thông số (màu, bo góc, cỡ chữ,
+hiệu ứng hover/press) được truyền THẲNG vào constructor gốc của
+Button - để chính Button tự xử lý đúng thứ tự nội bộ của nó,
+thay vì mình đoán mò rồi set lại từng thuộc tính sau đó.
+
+Hiệu ứng hover (đổi màu + phóng to nhẹ) và tiếng click/hover đều
+dùng thẳng cơ chế có sẵn của Button (highlight_scale, pressed_scale,
+highlight_sound, pressed_sound) - đã được ursina test kỹ, không cần
+tự viết lại on_mouse_enter/on_mouse_exit/input như bản trước.
 ==========================================================
 """
 
@@ -30,87 +48,30 @@ class MenuButton(Button):
 
     def __init__(self, text="", **kwargs):
 
-        super().__init__()
-
-        self.text = text
-
-        self.scale = (BUTTON_WIDTH, BUTTON_HEIGHT)
-
-        self.color = color.rgba(25, 25, 25, 180)
-
-        self.highlight_color = PRIMARY
-
-        self.pressed_color = color.rgb(35, 35, 35)
-
-        self.text_color = WHITE
-
-        self.text_entity.scale = 1.2
-
-        self.text_entity.color = WHITE
-
-        self.model = "quad"
-
-        self.radius = .08
-
-        # scale gốc lưu lại để animate hover/press dựa trên đúng
-        # kích thước ban đầu, tránh cộng dồn scale qua nhiều lần
-        self.base_scale = self.scale
-
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-        self.base_scale = self.scale
-
-    def on_mouse_enter(self):
-
-        self.animate_scale(
-            (
-                self.base_scale[0] * HOVER_SCALE,
-                self.base_scale[1] * HOVER_SCALE,
-            ),
-            duration=HOVER_ANIM_DURATION,
-            curve=curve.out_quad,
+        options = dict(
+            text=text,
+            model=Quad,
+            radius=.08,
+            scale=(BUTTON_WIDTH, BUTTON_HEIGHT),
+            color=color.rgba(25, 25, 25, 180),
+            highlight_color=PRIMARY,
+            pressed_color=color.rgb(35, 35, 35),
+            text_color=WHITE,
+            text_size=1.2,
+            # Phóng to nhẹ khi hover/nhấn - Button tự áp dụng lên
+            # model (khối nền), KHÔNG đụng vào text_entity nên chữ
+            # luôn giữ đúng cỡ, không bị lỗi như bản trước.
+            highlight_scale=1.06,
+            pressed_scale=0.94,
+            # Audio object dùng chung (singleton) từ ui/ui_sound.py -
+            # Button tự gọi .play() khi hover/nhấn, đúng volume đã
+            # định nghĩa ở ui/theme.py.
+            highlight_sound=get_hover_audio(),
+            pressed_sound=get_click_audio(),
         )
 
-        self.text_entity.color = PRIMARY
+        # Cho phép nơi gọi override bất kỳ option nào ở trên (vd tự
+        # đặt scale/position/parent riêng cho từng nút).
+        options.update(kwargs)
 
-        play_hover()
-
-    def on_mouse_exit(self):
-
-        self.animate_scale(
-            self.base_scale,
-            duration=HOVER_ANIM_DURATION,
-            curve=curve.out_quad,
-        )
-
-        self.text_entity.color = WHITE
-
-    def input(self, key):
-        # Lưu ý: Button.on_click trong Ursina là 1 thuộc tính do người
-        # gọi gán trực tiếp (vd: MenuButton(on_click=self.foo)), nên
-        # không thể override bằng cách định nghĩa method on_click() ở
-        # đây - nó sẽ bị đè mất. Thay vào đó ta chèn tiếng click + hiệu
-        # ứng bóp nhỏ ngay tại input(), rồi gọi super().input(key) để
-        # Ursina vẫn tự xử lý việc gọi self.on_click như bình thường.
-        if self.hovered and key == "left mouse down":
-            self.animate_scale(
-                (
-                    self.base_scale[0] * PRESS_SCALE,
-                    self.base_scale[1] * PRESS_SCALE,
-                ),
-                duration=PRESS_ANIM_DURATION,
-            )
-
-        if self.hovered and key == "left mouse up":
-            self.animate_scale(
-                (
-                    self.base_scale[0] * HOVER_SCALE,
-                    self.base_scale[1] * HOVER_SCALE,
-                ),
-                duration=HOVER_ANIM_DURATION,
-                curve=curve.out_quad,
-            )
-            play_click()
-
-        super().input(key)
+        super().__init__(**options)
