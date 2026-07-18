@@ -3,6 +3,7 @@ from ursina import Entity, Text, camera, application, destroy
 from ui.glow_text import GlowText
 from ui.menu_button import MenuTextButton
 from ui.animations import stagger_slide_in
+from ui.rotating_cube import RotatingCube
 from ui.theme import (
     FONT_TITLE,
     FONT_REGULAR,
@@ -21,6 +22,8 @@ from ui.layout import (
     MENU_LIST_START_Y,
     FOOTER_Y,
     BACKGROUND_SCALE,
+    CUBE_OFFSET_X,
+    CUBE_OFFSET_Y,
 )
 
 
@@ -34,7 +37,7 @@ class MenuScene(Entity):
         self.background = Entity(
             parent=self,
             model="quad",
-            texture="assets/sprites/background.jpg",
+            texture="assets/sprites/night.jpg",
             scale=BACKGROUND_SCALE,
             double_sided=True,
         )
@@ -57,9 +60,19 @@ class MenuScene(Entity):
             scale=TITLE_SCALE,
         )
 
-        # TODO(sau khi menu ổn định): thêm 1 cube 3D xoay vòng vòng
-        # cạnh title, đặt tại (MENU_X + CUBE_OFFSET_X, TITLE_Y).
-        # Xem ghi chú cuối README/chat để biết cách làm.
+        # Cube xoay cạnh logo - dùng đúng texture + tỉ lệ khối đứng
+        # (STANDING) trong game: scale (1, 2, 1) - cao gấp đôi rộng/sâu,
+        # xem game/block_renderer.py -> get_transform(). Không phải
+        # cube vuông đều, mà là khối chữ nhật giống hệt trong gameplay.
+        self.logo_cube = RotatingCube(
+            parent=self.ui_root,
+            position=(
+                MENU_X + CUBE_OFFSET_X,
+                TITLE_Y + CUBE_OFFSET_Y,
+                -0.02,
+            ),
+            scale=(0.11, 0.22, 0.11),
+        )
 
         self.subtitle = Text(
             text="Puzzle Solver",

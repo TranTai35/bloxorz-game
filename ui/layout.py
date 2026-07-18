@@ -27,9 +27,11 @@ MENU_X = -0.75
 
 TITLE_Y = 0.32
 
-# Cube xoay đặt cạnh logo (làm sau - xem ui/rotating_cube.py khi có)
-CUBE_OFFSET_X = 0.30
-CUBE_OFFSET_Y = 0.0
+# Cube xoay đặt cạnh logo, bên phải chữ "BLOXORZ" - xem
+# ui/rotating_cube.py. Giá trị X đủ lớn để không đè lên chữ tiêu đề
+# (đã canh bằng cách render thử, xem ghi chú trong chat).
+CUBE_OFFSET_X = 0.62
+CUBE_OFFSET_Y = 0.02
 
 # ==========================================================
 # DANH SÁCH MENU
